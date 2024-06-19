@@ -51,7 +51,7 @@ public class Mcpatch2Loader {
         }
 
         // 获取第一个可用的exe文件路径
-        File exeFile = getExeFile(content, startListPath, jarFile);
+        File exeFile = removeOldAndReturnNewestExeFile(content, startListPath, jarFile);
 
         System.out.println("mcpatch-executable is " + exeFile.getAbsolutePath());
 
@@ -94,12 +94,12 @@ public class Mcpatch2Loader {
     }
 
     /**
-     * 获取exe文件的路径
+     * 获取exe文件的路径，同时删除其它旧的文件
      * @param content 启动列表文件的内容
      * @param startListPath 启动列表文件路径
      * @param jarFile 自己Jar文件
      */
-    private static File getExeFile(List<String> content, String startListPath, File jarFile) {
+    private static File removeOldAndReturnNewestExeFile(List<String> content, String startListPath, File jarFile) {
         if (content.isEmpty()) {
             throw new RuntimeException("the file can not be empty: " + startListPath);
         }
@@ -107,14 +107,24 @@ public class Mcpatch2Loader {
         // 寻找第一个存在的文件
         String exeName = "";
 
+        // 启动列表的第一行是要启动文件，也是最新的文件
+        // 从第二行开始，后面的所有文件都是旧文件，会由加载器本身去删除掉这些文件
+        // 这些文件中可能会包含正在运行的客户端程序本身，而客户端程序本身是无法删除自己的
+        // 因此需要借助加载来删除这些旧文件
         for (String line : content) {
             String name = line.trim();
+
+            if (name.isEmpty())
+                continue;
+
             File file = new File(jarFile.getParentFile(), name);
 
-            if (file.exists())
+            if (exeName.isEmpty())
             {
                 exeName = name;
-                break;
+            } else {
+                if (file.exists())
+                    file.delete();
             }
         }
 
